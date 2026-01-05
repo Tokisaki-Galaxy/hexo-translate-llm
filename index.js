@@ -275,17 +275,12 @@ if (config && config.enable) {
                     // 兜底逻辑：如果主题对标题做了特殊处理（如截断），则直接替换
                     document.title = window._zh_title;
                 }
-                // 替换文章页面的 h1 标题 (支持模糊匹配)
-                var h1Elements = document.querySelectorAll('h1');
-                h1Elements.forEach(function(h1) {
-                    var text = h1.textContent.trim();
-                    if (text === window._en_title.trim() || text.indexOf(window._en_title.trim()) !== -1) {
-                        // 仅当文本与标题高度相似时替换（避免误替换）
-                        if (text.length <= window._en_title.trim().length * 1.5) {
-                            h1.textContent = window._zh_title;
-                        }
-                    }
-                });
+                // 替换文章页面的 h1 标题
+                // 考虑到不同主题的选择器差异，直接寻找第一个 h1 标签进行替换
+                var h1 = document.querySelector('h1');
+                if (h1 && window._zh_title) {
+                    h1.textContent = window._zh_title;
+                }
             }
             // 2. 替换首页或列表页中所有带有 data-zh-title 和 data-en-title 属性的标题元素
             var titleElements = document.querySelectorAll('[data-zh-title][data-en-title]');
