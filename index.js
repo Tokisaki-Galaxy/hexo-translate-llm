@@ -140,6 +140,16 @@ hexo.extend.filter.register('before_post_render', async (data) => {
                 const originalTitle = data.title; // 保存原始中文标题
 
                 if (translatedContent) {
+                    // 标签配对检查：防止 AI 遗漏闭合标签导致 Hexo 渲染崩溃
+                    const tagsToCheck = ['note', 'tabs', 'codeblock'];
+                    for (const tag of tagsToCheck) {
+                        const openCount = (translatedContent.match(new RegExp(`\\{%\\s*${tag}`, 'g')) || []).length;
+                        const closeCount = (translatedContent.match(new RegExp(`\\{%\\s*end${tag}`, 'g')) || []).length;
+                        if (openCount !== closeCount) {
+                            throw new Error(`Mismatched Hexo tag: ${tag} (open: ${openCount}, close: ${closeCount})`);
+                        }
+                    }
+
                     // 安全过滤：将非正常的 {% 替换为 HTML 实体，防止被误认为 Hexo 标签导致构建崩溃
                     // 允许所有格式正确的 Hexo 标签（如 note, tabs, codeblock 等），只转义畸形的 {% 序列
                     translatedContent = translatedContent.replace(/\{%(?!\s*\/?\w[\w-]*)/g, '&#123;%');
