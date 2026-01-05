@@ -110,14 +110,23 @@ hexo.extend.filter.register('before_post_render', async (data) => {
         const endpoint = config.endpoint || 'https://api.siliconflow.cn/v1/chat/completions';
 
         try {
+            // 提取代码块，用占位符替换以节省 Token 并防止 AI 误翻译
+            const codeBlocks = [];
+            let contentWithPlaceholders = data.content.replace(/```[\s\S]*?```/g, (match) => {
+                const placeholder = `[CODE_BLOCK_${codeBlocks.length}]`;
+                codeBlocks.push(match);
+                return placeholder;
+            });
+
             // 强化 Prompt，严禁 AI 输出任何解释性文字
             const prompt = `You are a professional technical translator.
             1. Translate the following Markdown content to English.
-            2. DO NOT translate code blocks, technical identifiers, or Hexo tags (like {% note %}, {% tabs %}, {% codeblock %}, etc.). Keep ALL {% ... %} and {% ... %}...{% end... %} tag pairs EXACTLY as they are.
-            3. DO NOT modify any HTML tags or their attributes (e.g., keep <span class="xxx"> as it is).
-            4. Maintain all Markdown formatting.
-            5. Also translate the title provided.
-            6. Output ONLY the translated text. NO explanations, NO notes, NO meta-comments.
+            2. DO NOT translate or modify placeholders like [CODE_BLOCK_N]. Keep them exactly as they are.
+            3. DO NOT translate technical identifiers or Hexo tags (like {% note %}, {% tabs %}, {% codeblock %}, etc.). Keep ALL {% ... %} and {% ... %}...{% end... %} tag pairs EXACTLY as they are.
+            4. DO NOT modify any HTML tags or their attributes (e.g., keep <span class="xxx"> as it is).
+            5. Maintain all Markdown formatting.
+            6. Also translate the title provided.
+            7. Output ONLY the translated text. NO explanations, NO notes, NO meta-comments.
             Format your response as: [TITLE_START]translated title[TITLE_END][CONTENT_START]translated content[CONTENT_END]`;
 
             const result = await fetchWithRetry(endpoint, {
@@ -128,7 +137,7 @@ hexo.extend.filter.register('before_post_render', async (data) => {
                     model: model,
                     messages: [
                         { role: 'system', content: prompt },
-                        { role: 'user', content: `Title: ${data.title}\n\nContent: ${data.content}` }
+                        { role: 'user', content: `Title: ${data.title}\n\nContent: ${contentWithPlaceholders}` }
                     ]
                 })
             });
@@ -141,6 +150,13 @@ hexo.extend.filter.register('before_post_render', async (data) => {
                 const originalTitle = data.title; // 保存原始中文标题
 
                 if (translatedContent) {
+                    // 还原代码块
+                    codeBlocks.forEach((originalCode, index) => {
+                        const placeholder = `[CODE_BLOCK_${index}]`;
+                        // 使用 split/join 替换所有可能的占位符（防止 AI 多次输出同一个占位符）
+                        translatedContent = translatedContent.split(placeholder).join(originalCode);
+                    });
+
                     // 基础 HTML 语法校验，防止 LLM 损坏属性格式（如 class">）
                     if (/<[a-zA-Z]+\s+[^>]*\s*[a-zA-Z]+">/g.test(translatedContent)) {
                         throw new Error(`LLM generated malformed HTML attributes (e.g. class">)`);
