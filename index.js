@@ -93,6 +93,12 @@ hexo.extend.filter.register('before_post_render', async (data) => {
         const originalTitle = data.title; // 保存原始中文标题
         data.title = cached.translatedTitle;
         data.content = cached.wrappedContent;
+        
+        // 兼容性补全：如果旧缓存没有 originalTitle，则补全它
+        if (!cached.originalTitle) {
+            cached.originalTitle = originalTitle;
+        }
+
         // 记录标题映射用于首页/列表页
         globalTitlePairs.push({ zh: originalTitle, en: cached.translatedTitle });
         hexo.log.info(`[AI Translate] Cache Hit: ${data.title}`);
@@ -160,6 +166,7 @@ ${translatedContent}
                     await storage.save(data.source, {
                         hash: contentHash,
                         model: model,
+                        originalTitle: data.title,
                         translatedTitle: translatedTitle,
                         wrappedContent: wrappedContent
                     });
@@ -191,8 +198,33 @@ if (config && config.enable) {
 
     // 注入全局标题映射脚本（在 body 末尾）
     hexo.extend.injector.register('body_end', () => {
-        if (globalTitlePairs.length === 0) return '';
-        return `<script>window._hexo_title_pairs = ${JSON.stringify(globalTitlePairs)};</script>`;
+        const pairsMap = new Map();
+        
+        // 1. 从内存中添加（当前进程处理的）
+        globalTitlePairs.forEach(p => {
+            if (p.en && p.zh) pairsMap.set(p.en.trim(), p.zh);
+        });
+        
+        // 2. 从缓存中补充（历史翻译过的）
+        if (storage.cache) {
+            Object.values(storage.cache).forEach(item => {
+                if (item.originalTitle && item.translatedTitle) {
+                    const en = item.translatedTitle.trim();
+                    if (!pairsMap.has(en)) {
+                        pairsMap.set(en, item.originalTitle);
+                    }
+                }
+            });
+        }
+        
+        if (pairsMap.size === 0) return '';
+        
+        const pairs = [];
+        pairsMap.forEach((zh, en) => {
+            pairs.push({ en: en, zh: zh });
+        });
+        
+        return `<script>window._hexo_title_pairs = ${JSON.stringify(pairs)};</script>`;
     }, 'default');
 
     hexo.extend.injector.register('head_begin', `
@@ -202,6 +234,7 @@ if (config && config.enable) {
     if (userLang && userLang.startsWith('zh')) {
         document.documentElement.setAttribute('lang', 'zh-CN');
         window.addEventListener('DOMContentLoaded', function() {
+            // 1. 处理文章页面的标题和 H1
             if (window._zh_title && window._en_title) {
                 // 极其精准的探测：直接在当前标题中寻找英文标题并替换为中文
                 if (document.title.includes(window._en_title)) {
@@ -210,15 +243,19 @@ if (config && config.enable) {
                     // 兜底逻辑：如果主题对标题做了特殊处理（如截断），则直接替换
                     document.title = window._zh_title;
                 }
-                // 替换文章页面的 h1 标题
+                // 替换文章页面的 h1 标题 (支持模糊匹配)
                 var h1Elements = document.querySelectorAll('h1');
                 h1Elements.forEach(function(h1) {
-                    if (h1.textContent.trim() === window._en_title.trim()) {
-                        h1.textContent = window._zh_title;
+                    var text = h1.textContent.trim();
+                    if (text === window._en_title.trim() || text.indexOf(window._en_title.trim()) !== -1) {
+                        // 仅当文本与标题高度相似时替换（避免误替换）
+                        if (text.length <= window._en_title.trim().length * 1.5) {
+                            h1.textContent = window._zh_title;
+                        }
                     }
                 });
             }
-            // 替换首页或列表页中所有带有 data-zh-title 和 data-en-title 属性的标题元素
+            // 2. 替换首页或列表页中所有带有 data-zh-title 和 data-en-title 属性的标题元素
             var titleElements = document.querySelectorAll('[data-zh-title][data-en-title]');
             titleElements.forEach(function(el) {
                 var zhTitle = el.getAttribute('data-zh-title');
@@ -234,7 +271,7 @@ if (config && config.enable) {
                     }
                 }
             });
-            // 替换首页/列表页中的文章标题（使用全局标题映射）
+            // 3. 替换首页/列表页中的文章标题（使用全局标题映射）
             if (window._hexo_title_pairs && window._hexo_title_pairs.length > 0) {
                 // 创建英文到中文的映射
                 var titleMap = {};
