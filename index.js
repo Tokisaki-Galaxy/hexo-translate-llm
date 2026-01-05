@@ -141,8 +141,6 @@ hexo.extend.filter.register('before_post_render', async (data) => {
                     const titleScript = `<script>
 window._zh_title = ${JSON.stringify(data.title)};
 window._en_title = ${JSON.stringify(translatedTitle)};
-if (!window._hexo_title_pairs) window._hexo_title_pairs = [];
-window._hexo_title_pairs.push({zh: ${JSON.stringify(data.title)}, en: ${JSON.stringify(translatedTitle)}});
 </script>\n\n`;
 
                     // 封装内容，注意空行以确保 Markdown 渲染
@@ -243,13 +241,34 @@ if (config && config.enable) {
                 window._hexo_title_pairs.forEach(function(pair) {
                     titleMap[pair.en.trim()] = pair.zh;
                 });
-                // 查找所有可能包含标题的元素（标题、链接等）
-                var potentialTitleElements = document.querySelectorAll('h1, h2, h3, a.post-title, a.article-title, .post-title a, .article-title a, .post-title, .article-title, .entry-title, .entry-title a, a[rel="bookmark"], .card-title, .card-title a');
-                potentialTitleElements.forEach(function(el) {
+                // 替换文章标题的辅助函数，支持精确匹配和包含匹配
+                var replaceTitle = function(el) {
                     var text = el.textContent.trim();
+                    // 优先精确匹配
                     if (titleMap[text]) {
                         el.textContent = titleMap[text];
+                        return;
                     }
+                    // 尝试包含匹配（处理带额外空格或子元素的情况）
+                    for (var enTitle in titleMap) {
+                        if (text === enTitle || text.indexOf(enTitle) !== -1) {
+                            // 仅当文本与标题高度相似时替换（避免误替换）
+                            if (text.length <= enTitle.length * 1.5) {
+                                el.textContent = titleMap[enTitle];
+                                return;
+                            }
+                        }
+                    }
+                };
+                // 在文章卡片/列表容器内查找标题元素（限制搜索范围提升性能）
+                var containers = document.querySelectorAll('main, article, .post, .posts, .post-list, .article-list, .card, .content, #content, #main');
+                if (containers.length === 0) {
+                    containers = [document.body];
+                }
+                containers.forEach(function(container) {
+                    var titleSelectors = 'h1, h2, h3, .post-title, .article-title, .entry-title, .card-title, a[rel="bookmark"]';
+                    var potentialTitleElements = container.querySelectorAll(titleSelectors);
+                    potentialTitleElements.forEach(replaceTitle);
                 });
             }
         });
