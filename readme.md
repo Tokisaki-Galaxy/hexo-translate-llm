@@ -20,6 +20,8 @@
 
 An AI-powered translation plugin for Hexo blog posts. It automatically switches between Chinese and English versions based on the user's language, ensuring stability through caching and concurrency control.
 
+**Demo**: [https://tokisaki.top](https://tokisaki.top)
+
 ## 🚀 Features
 - **Content Hash Caching**: Avoids redundant requests by hitting the cache for identical content (supports local and Neon PostgreSQL remote sync).
 - **Custom Models & Endpoints**: Configurable `model` and `endpoint`, supporting DeepSeek and other mainstream LLMs.
@@ -80,6 +82,8 @@ Apache 2.0
 <p align="right"><a href="#hexo-llm-translate-plugin">English</a></p>
 
 AI 自动翻译 Hexo 博文的插件，按语言自动切换显示中/英双版本，并通过缓存与并发控制提升稳定性。
+
+**示例网站**: [https://tokisaki.top](https://tokisaki.top)
 
 ## 🚀 特性
 - **内容哈希缓存**：避免重复请求，相同内容直接命中缓存（支持本地与 Neon PostgreSQL 远程同步）。
