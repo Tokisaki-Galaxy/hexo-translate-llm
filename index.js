@@ -114,9 +114,10 @@ hexo.extend.filter.register('before_post_render', async (data) => {
             const prompt = `You are a professional technical translator.
             1. Translate the following Markdown content to English.
             2. DO NOT translate code blocks, technical identifiers, or Hexo tags (like {% note %}, {% tabs %}, {% codeblock %}, etc.). Keep ALL {% ... %} and {% ... %}...{% end... %} tag pairs EXACTLY as they are.
-            3. Maintain all Markdown formatting.
-            4. Also translate the title provided.
-            5. Output ONLY the translated text. NO explanations, NO notes, NO meta-comments.
+            3. DO NOT modify any HTML tags or their attributes (e.g., keep <span class="xxx"> as it is).
+            4. Maintain all Markdown formatting.
+            5. Also translate the title provided.
+            6. Output ONLY the translated text. NO explanations, NO notes, NO meta-comments.
             Format your response as: [TITLE_START]translated title[TITLE_END][CONTENT_START]translated content[CONTENT_END]`;
 
             const result = await fetchWithRetry(endpoint, {
@@ -140,6 +141,11 @@ hexo.extend.filter.register('before_post_render', async (data) => {
                 const originalTitle = data.title; // 保存原始中文标题
 
                 if (translatedContent) {
+                    // 基础 HTML 语法校验，防止 LLM 损坏属性格式（如 class">）
+                    if (/<[a-zA-Z]+\s+[^>]*\s*[a-zA-Z]+">/g.test(translatedContent)) {
+                        throw new Error(`LLM generated malformed HTML attributes (e.g. class">)`);
+                    }
+
                     // 标签配对检查：防止 AI 遗漏闭合标签导致 Hexo 渲染崩溃
                     const tagsToCheck = ['note', 'tabs', 'codeblock'];
                     for (const tag of tagsToCheck) {
