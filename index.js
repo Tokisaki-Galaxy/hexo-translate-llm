@@ -50,10 +50,10 @@ const fetchWithRetry = async (url, options, retries = 2) => {
             const controller = new AbortController();
             const timeout = options.timeout;
             const timeoutId = setTimeout(() => controller.abort(), timeout);
-            
+
             const response = await fetch(url, { ...options, signal: controller.signal });
             clearTimeout(timeoutId);
-            
+
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return await response.json();
         } catch (err) {
@@ -93,17 +93,14 @@ hexo.extend.filter.register('before_post_render', async (data) => {
         const originalTitle = data.title; // 保存原始中文标题
         data.title = cached.translatedTitle;
         data.content = cached.wrappedContent;
-        
-        // 兼容性补全：如果旧缓存没有 originalTitle，则补全它
+
+        // 兼容性补全：如果旧缓存没有 originalTitle，则补全它并同步到存储
         if (!cached.originalTitle) {
             cached.originalTitle = originalTitle;
-        }
-
-        // 记录标题映射用于首页/列表页
-        globalTitlePairs.push({ zh: originalTitle, en: cached.translatedTitle });
-        hexo.log.info(`[AI Translate] Cache Hit: ${data.title}`);
-        return data;
-    }
+            // 异步保存，不阻塞当前渲染流程
+            storage.save(data.source, cached).catch(err => {
+                hexo.log.error(`[AI Translate] Failed to update legacy cache for ${data.source}: ${err.message}`);
+            });
 
     // --- 并发控制 ---
     return runWithLimit(async () => {
@@ -199,12 +196,12 @@ if (config && config.enable) {
     // 注入全局标题映射脚本（在 body 末尾）
     hexo.extend.injector.register('body_end', () => {
         const pairsMap = new Map();
-        
+
         // 1. 从内存中添加（当前进程处理的）
         globalTitlePairs.forEach(p => {
             if (p.en && p.zh) pairsMap.set(p.en.trim(), p.zh);
         });
-        
+
         // 2. 从缓存中补充（历史翻译过的）
         if (storage.cache) {
             Object.values(storage.cache).forEach(item => {
@@ -216,14 +213,14 @@ if (config && config.enable) {
                 }
             });
         }
-        
+
         if (pairsMap.size === 0) return '';
-        
+
         const pairs = [];
         pairsMap.forEach((zh, en) => {
             pairs.push({ en: en, zh: zh });
         });
-        
+
         return `<script>window._hexo_title_pairs = ${JSON.stringify(pairs)};</script>`;
     }, 'default');
 
