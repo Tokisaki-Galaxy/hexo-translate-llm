@@ -1,6 +1,6 @@
 {
   "name": "hexo-translate-llm",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "A Hexo plugin to translate posts using LLM (Large Language Models).",
   "main": "index.js",
   "scripts": {
@@ -16,7 +16,11 @@
   ],
   "author": "Tokisaki Galaxy",
   "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
-    "dotenv": "^16.0.0"
+    "dotenv": "^16.0.0",
+    "pg": "^8.11.0"
   }
 }

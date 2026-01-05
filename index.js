@@ -9,25 +9,18 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const Storage = require('./lib/storage');
 
 try { require('dotenv').config(); } catch (e) {}
 const config = hexo.config.llm_translation;
 const API_KEY = process.env.LLM_API_KEY;
 
-// 缓存文件路径：利用 node_modules/.cache 绕过 Vercel 的构建清理
-const CACHE_DIR = path.join(process.cwd(), 'node_modules', '.cache');
-if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
-const CACHE_FILE = path.join(CACHE_DIR, 'ai-translate-cache.json');
+const storage = new Storage(hexo);
+let cacheLoaded = false;
 
-// 加载缓存
-let cache = {};
-if (fs.existsSync(CACHE_FILE)) {
-    try {
-        cache = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8'));
-    } catch (e) { cache = {}; }
+if (config && config.enable && !API_KEY) {
+    hexo.log.warn('[AI Translate] LLM_API_KEY is missing. Translation will be skipped.');
 }
-
-const saveCache = () => fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2));
 
 // --- 并发控制 ---
 // 降低并发至 2，增加稳定性，防止 API 熔断
@@ -78,13 +71,22 @@ hexo.extend.filter.register('before_post_render', async (data) => {
         return data;
     }
 
+    // 确保缓存已加载（仅加载一次）
+    if (!cacheLoaded) {
+        await storage.load();
+        cacheLoaded = true;
+    }
+
     // 计算内容 Hash，判断是否需要重新翻译
-    const contentHash = crypto.createHash('md5').update(data.content + (data.title || '')).digest('hex');
+    const CACHE_VERSION = 'v1'; // 结构变更时修改此版本号
+    const contentHash = crypto.createHash('md5')
+        .update(data.content + (data.title || '') + CACHE_VERSION)
+        .digest('hex');
     const model = config.model || 'deepseek-ai/DeepSeek-V3.2';
 
     // 缓存命中逻辑
-    if (cache[data.source] && cache[data.source].hash === contentHash && cache[data.source].model === model) {
-        const cached = cache[data.source];
+    const cached = storage.get(data.source);
+    if (cached && cached.hash === contentHash && cached.model === model) {
         data.title = cached.translatedTitle;
         data.content = cached.wrappedContent;
         hexo.log.info(`[AI Translate] Cache Hit: ${data.title}`);
@@ -132,25 +134,24 @@ hexo.extend.filter.register('before_post_render', async (data) => {
 
                     // 封装内容，注意空行以确保 Markdown 渲染
                     const wrappedContent = `${titleScript}
-<div class="zh-content">
+<div class="hexo-llm-zh">
 
 ${data.content}
 
 </div>
-<div class="en-content">
+<div class="hexo-llm-en">
 
 ${translatedContent}
 
 </div>`;
 
                     // 更新数据并存入缓存
-                    cache[data.source] = {
+                    await storage.save(data.source, {
                         hash: contentHash,
                         model: model,
                         translatedTitle: translatedTitle,
                         wrappedContent: wrappedContent
-                    };
-                    saveCache();
+                    });
 
                     data.title = translatedTitle;
                     data.content = wrappedContent;
@@ -167,10 +168,10 @@ ${translatedContent}
 // 注入 CSS 和 JS
 hexo.extend.injector.register('head_end', `
 <style>
-    .zh-content { display: none; }
-    .en-content { display: block; }
-    html[lang^="zh"] .en-content { display: none !important; }
-    html[lang^="zh"] .zh-content { display: block !important; }
+    .hexo-llm-zh { display: none; }
+    .hexo-llm-en { display: block; }
+    html[lang^="zh"] .hexo-llm-en { display: none !important; }
+    html[lang^="zh"] .hexo-llm-zh { display: block !important; }
 </style>
 `, 'default');
 
@@ -189,3 +190,10 @@ hexo.extend.injector.register('head_begin', `
 })();
 </script>
 `, 'default');
+
+// 确保在 Hexo 退出时关闭数据库连接
+hexo.on('exit', async () => {
+    if (storage.close) {
+        await storage.close();
+    }
+});
