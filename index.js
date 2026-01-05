@@ -35,7 +35,8 @@ let activeCount = 0;
 const waitingQueue = [];
 
 const runWithLimit = async (fn) => {
-    if (activeCount >= config.max_concurrency || 2) {
+    const limit = (config && config.max_concurrency) || 2;
+    if (activeCount >= limit) {
         await new Promise(resolve => waitingQueue.push(resolve));
     }
     activeCount++;
