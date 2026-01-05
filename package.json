@@ -1,6 +1,6 @@
 {
   "name": "hexo-translate-llm",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "A Hexo plugin to translate posts using LLM (Large Language Models).",
   "keywords": [
     "hexo",
@@ -13,6 +13,10 @@
   "homepage": "https://github.com/Tokisaki-Galaxy/hexo-translate-llm#readme",
   "bugs": {
     "url": "https://github.com/Tokisaki-Galaxy/hexo-translate-llm/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "repository": {
     "type": "git",
