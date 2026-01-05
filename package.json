@@ -1,11 +1,7 @@
 {
   "name": "hexo-translate-llm",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "A Hexo plugin to translate posts using LLM (Large Language Models).",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "keywords": [
     "hexo",
     "translate",
@@ -14,13 +10,29 @@
     "deepseek",
     "openai"
   ],
-  "author": "Tokisaki Galaxy",
+  "homepage": "https://github.com/Tokisaki-Galaxy/hexo-translate-llm#readme",
+  "bugs": {
+    "url": "https://github.com/Tokisaki-Galaxy/hexo-translate-llm/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tokisaki-Galaxy/hexo-translate-llm.git"
+  },
   "license": "Apache-2.0",
-  "engines": {
-    "node": ">=18.0.0"
+  "author": "Tokisaki Galaxy",
+  "type": "commonjs",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "dotenv": "^16.0.0",
     "pg": "^8.11.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
