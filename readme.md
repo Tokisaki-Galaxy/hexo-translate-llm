@@ -24,6 +24,7 @@ llm_translation:
   model: "deepseek-ai/DeepSeek-V3.2" # 默认模型
   endpoint: "https://api.siliconflow.cn/v1/chat/completions" # API 端点
   single_timeout: 120 # 单篇文章翻译超时时间（秒）
+  max_concurrency: 2 # 最大并发数
 ```
 
 在项目根目录创建 `.env` 文件并配置 API Key：
@@ -61,6 +62,7 @@ llm_translation:
   model: "deepseek-ai/DeepSeek-V3.2"
   endpoint: "https://api.siliconflow.cn/v1/chat/completions"
   single_timeout: 120
+  max_concurrency: 2
 ```
 
 Create a `.env` file in your root directory:

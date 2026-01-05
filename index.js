@@ -11,6 +11,8 @@ const path = require('path');
 const crypto = require('crypto');
 
 try { require('dotenv').config(); } catch (e) {}
+const config = hexo.config.llm_translation;
+const API_KEY = process.env.LLM_API_KEY;
 
 // 缓存文件路径：利用 node_modules/.cache 绕过 Vercel 的构建清理
 const CACHE_DIR = path.join(process.cwd(), 'node_modules', '.cache');
@@ -29,12 +31,11 @@ const saveCache = () => fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null,
 
 // --- 并发控制 ---
 // 降低并发至 2，增加稳定性，防止 API 熔断
-const MAX_CONCURRENCY = 2;
 let activeCount = 0;
 const waitingQueue = [];
 
 const runWithLimit = async (fn) => {
-    if (activeCount >= MAX_CONCURRENCY) {
+    if (activeCount >= config.max_concurrency || 2) {
         await new Promise(resolve => waitingQueue.push(resolve));
     }
     activeCount++;
@@ -71,9 +72,6 @@ const fetchWithRetry = async (url, options, retries = 2) => {
 };
 
 hexo.extend.filter.register('before_post_render', async (data) => {
-    const config = hexo.config.llm_translation;
-    const API_KEY = process.env.LLM_API_KEY;
-
     // 健壮性检查：确保 data 及其属性存在
     if (!data || !data.content || !config || !config.enable || !API_KEY || data.layout !== 'post' || data.no_translate) {
         return data;
