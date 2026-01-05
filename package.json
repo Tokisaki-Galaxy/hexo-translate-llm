@@ -14,8 +14,8 @@
     "deepseek",
     "openai"
   ],
-  "author": "",
-  "license": "MIT",
+  "author": "Tokisaki Galaxy",
+  "license": "Apache-2.0",
   "dependencies": {
     "dotenv": "^16.0.0"
   }
