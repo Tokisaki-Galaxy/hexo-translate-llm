@@ -101,6 +101,9 @@ hexo.extend.filter.register('before_post_render', async (data) => {
             storage.save(data.source, cached).catch(err => {
                 hexo.log.error(`[AI Translate] Failed to update legacy cache for ${data.source}: ${err.message}`);
             });
+        }
+        return data;
+    }
 
     // --- 并发控制 ---
     return runWithLimit(async () => {

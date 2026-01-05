@@ -1,6 +1,6 @@
 {
   "name": "hexo-translate-llm",
-  "version": "2.0.9",
+  "version": "2.0.10",
   "description": "A Hexo plugin to translate posts using LLM (Large Language Models).",
   "keywords": [
     "hexo",
