@@ -1,0 +1,22 @@
+{
+  "name": "hexo-translate-llm",
+  "version": "1.0.0",
+  "description": "A Hexo plugin to translate posts using LLM (Large Language Models).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "hexo",
+    "translate",
+    "llm",
+    "ai",
+    "deepseek",
+    "openai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.0.0"
+  }
+}
