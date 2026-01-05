@@ -16,7 +16,7 @@ const config = hexo.config.llm_translation;
 const API_KEY = process.env.LLM_API_KEY;
 
 const storage = new Storage(hexo);
-let cacheLoaded = false;
+let loadPromise = null;
 
 if (config && config.enable && !API_KEY) {
     hexo.log.warn('[AI Translate] LLM_API_KEY is missing. Translation will be skipped.');
@@ -71,11 +71,11 @@ hexo.extend.filter.register('before_post_render', async (data) => {
         return data;
     }
 
-    // 确保缓存已加载（仅加载一次）
-    if (!cacheLoaded) {
-        await storage.load();
-        cacheLoaded = true;
+    // 确保缓存已加载（使用 Promise 锁防止并发初始化）
+    if (!loadPromise) {
+        loadPromise = storage.load();
     }
+    await loadPromise;
 
     // 计算内容 Hash，判断是否需要重新翻译
     const CACHE_VERSION = 'v1'; // 结构变更时修改此版本号
@@ -166,7 +166,8 @@ ${translatedContent}
 });
 
 // 注入 CSS 和 JS
-hexo.extend.injector.register('head_end', `
+if (config && config.enable) {
+    hexo.extend.injector.register('head_end', `
 <style>
     .hexo-llm-zh { display: none; }
     .hexo-llm-en { display: block; }
@@ -175,14 +176,24 @@ hexo.extend.injector.register('head_end', `
 </style>
 `, 'default');
 
-hexo.extend.injector.register('head_begin', `
+    hexo.extend.injector.register('head_begin', `
 <script>
 (function() {
     var userLang = navigator.language || navigator.userLanguage;
     if (userLang && userLang.startsWith('zh')) {
         document.documentElement.setAttribute('lang', 'zh-CN');
         window.addEventListener('DOMContentLoaded', function() {
-            if (window._zh_title) document.title = document.title.replace(/.*(?= |$)/, window._zh_title);
+            if (window._zh_title) {
+                // 尝试更智能地替换标题，保留站点后缀
+                var separator = document.title.includes(' | ') ? ' | ' : (document.title.includes(' - ') ? ' - ' : '');
+                if (separator) {
+                    var parts = document.title.split(separator);
+                    parts[0] = window._zh_title;
+                    document.title = parts.join(separator);
+                } else {
+                    document.title = window._zh_title;
+                }
+            }
         });
     } else {
         document.documentElement.setAttribute('lang', 'en');
@@ -190,6 +201,7 @@ hexo.extend.injector.register('head_begin', `
 })();
 </script>
 `, 'default');
+}
 
 // 确保在 Hexo 退出时关闭数据库连接
 hexo.on('exit', async () => {
