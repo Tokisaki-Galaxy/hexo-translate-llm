@@ -101,7 +101,7 @@ hexo.extend.filter.register('before_post_render', async (data) => {
             // 强化 Prompt，严禁 AI 输出任何解释性文字
             const prompt = `You are a professional technical translator.
             1. Translate the following Markdown content to English.
-            2. DO NOT translate code blocks, technical identifiers, or Hexo tags like {% ... %}.
+            2. DO NOT translate code blocks, technical identifiers, or Hexo tags (like {% note %}, {% tabs %}, {% codeblock %}, etc.). Keep ALL {% ... %} and {% ... %}...{% end... %} tag pairs EXACTLY as they are.
             3. Maintain all Markdown formatting.
             4. Also translate the title provided.
             5. Output ONLY the translated text. NO explanations, NO notes, NO meta-comments.
@@ -128,7 +128,8 @@ hexo.extend.filter.register('before_post_render', async (data) => {
 
                 if (translatedContent) {
                     // 安全过滤：将非正常的 {% 替换为 HTML 实体，防止被误认为 Hexo 标签导致构建崩溃
-                    translatedContent = translatedContent.replace(/\{%(?!\s*(raw|endraw|image|link|code|quote))/g, '&#123;%');
+                    // 允许所有格式正确的 Hexo 标签（如 note, tabs, codeblock 等），只转义畸形的 {% 序列
+                    translatedContent = translatedContent.replace(/\{%(?!\s*\/?\w[\w-]*)/g, '&#123;%');
 
                     const titleScript = `<script>window._zh_title = ${JSON.stringify(data.title)}; window._en_title = ${JSON.stringify(translatedTitle)};</script>\n\n`;
 
