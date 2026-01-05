@@ -130,7 +130,7 @@ hexo.extend.filter.register('before_post_render', async (data) => {
                     // 安全过滤：将非正常的 {% 替换为 HTML 实体，防止被误认为 Hexo 标签导致构建崩溃
                     translatedContent = translatedContent.replace(/\{%(?!\s*(raw|endraw|image|link|code|quote))/g, '&#123;%');
 
-                    const titleScript = `<script>window._zh_title = ${JSON.stringify(data.title)};</script>\n\n`;
+                    const titleScript = `<script>window._zh_title = ${JSON.stringify(data.title)}; window._en_title = ${JSON.stringify(translatedTitle)};</script>\n\n`;
 
                     // 封装内容，注意空行以确保 Markdown 渲染
                     const wrappedContent = `${titleScript}
@@ -183,14 +183,12 @@ if (config && config.enable) {
     if (userLang && userLang.startsWith('zh')) {
         document.documentElement.setAttribute('lang', 'zh-CN');
         window.addEventListener('DOMContentLoaded', function() {
-            if (window._zh_title) {
-                // 尝试更智能地替换标题，保留站点后缀
-                var separator = document.title.includes(' | ') ? ' | ' : (document.title.includes(' - ') ? ' - ' : '');
-                if (separator) {
-                    var parts = document.title.split(separator);
-                    parts[0] = window._zh_title;
-                    document.title = parts.join(separator);
+            if (window._zh_title && window._en_title) {
+                // 极其精准的探测：直接在当前标题中寻找英文标题并替换为中文
+                if (document.title.includes(window._en_title)) {
+                    document.title = document.title.replace(window._en_title, window._zh_title);
                 } else {
+                    // 兜底逻辑：如果主题对标题做了特殊处理（如截断），则直接替换
                     document.title = window._zh_title;
                 }
             }
