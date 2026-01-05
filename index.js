@@ -65,6 +65,9 @@ const fetchWithRetry = async (url, options, retries = 2) => {
     }
 };
 
+// --- 全局标题映射，用于首页/列表页标题替换 ---
+const globalTitlePairs = [];
+
 hexo.extend.filter.register('before_post_render', async (data) => {
     // 健壮性检查：确保 data 及其属性存在
     if (!data || !data.content || !config || !config.enable || !API_KEY || data.layout !== 'post' || data.no_translate) {
@@ -87,8 +90,11 @@ hexo.extend.filter.register('before_post_render', async (data) => {
     // 缓存命中逻辑
     const cached = storage.get(data.source);
     if (cached && cached.hash === contentHash && cached.model === model) {
+        const originalTitle = data.title; // 保存原始中文标题
         data.title = cached.translatedTitle;
         data.content = cached.wrappedContent;
+        // 记录标题映射用于首页/列表页
+        globalTitlePairs.push({ zh: originalTitle, en: cached.translatedTitle });
         hexo.log.info(`[AI Translate] Cache Hit: ${data.title}`);
         return data;
     }
@@ -125,13 +131,19 @@ hexo.extend.filter.register('before_post_render', async (data) => {
             if (raw) {
                 const translatedTitle = raw.match(/\[TITLE_START\](.*?)\[TITLE_END\]/s)?.[1] || data.title;
                 let translatedContent = raw.match(/\[CONTENT_START\](.*?)\[CONTENT_END\]/s)?.[1] || "";
+                const originalTitle = data.title; // 保存原始中文标题
 
                 if (translatedContent) {
                     // 安全过滤：将非正常的 {% 替换为 HTML 实体，防止被误认为 Hexo 标签导致构建崩溃
                     // 允许所有格式正确的 Hexo 标签（如 note, tabs, codeblock 等），只转义畸形的 {% 序列
                     translatedContent = translatedContent.replace(/\{%(?!\s*\/?\w[\w-]*)/g, '&#123;%');
 
-                    const titleScript = `<script>window._zh_title = ${JSON.stringify(data.title)}; window._en_title = ${JSON.stringify(translatedTitle)};</script>\n\n`;
+                    const titleScript = `<script>
+window._zh_title = ${JSON.stringify(data.title)};
+window._en_title = ${JSON.stringify(translatedTitle)};
+if (!window._hexo_title_pairs) window._hexo_title_pairs = [];
+window._hexo_title_pairs.push({zh: ${JSON.stringify(data.title)}, en: ${JSON.stringify(translatedTitle)}});
+</script>\n\n`;
 
                     // 封装内容，注意空行以确保 Markdown 渲染
                     const wrappedContent = `${titleScript}
@@ -156,6 +168,8 @@ ${translatedContent}
 
                     data.title = translatedTitle;
                     data.content = wrappedContent;
+                    // 记录标题映射用于首页/列表页
+                    globalTitlePairs.push({ zh: originalTitle, en: translatedTitle });
                     hexo.log.info(`[AI Translate] Success: ${data.title}`);
                 }
             }
@@ -177,6 +191,12 @@ if (config && config.enable) {
 </style>
 `, 'default');
 
+    // 注入全局标题映射脚本（在 body 末尾）
+    hexo.extend.injector.register('body_end', () => {
+        if (globalTitlePairs.length === 0) return '';
+        return `<script>window._hexo_title_pairs = ${JSON.stringify(globalTitlePairs)};</script>`;
+    }, 'default');
+
     hexo.extend.injector.register('head_begin', `
 <script>
 (function() {
@@ -192,6 +212,45 @@ if (config && config.enable) {
                     // 兜底逻辑：如果主题对标题做了特殊处理（如截断），则直接替换
                     document.title = window._zh_title;
                 }
+                // 替换文章页面的 h1 标题
+                var h1Elements = document.querySelectorAll('h1');
+                h1Elements.forEach(function(h1) {
+                    if (h1.textContent.trim() === window._en_title.trim()) {
+                        h1.textContent = window._zh_title;
+                    }
+                });
+            }
+            // 替换首页或列表页中所有带有 data-zh-title 和 data-en-title 属性的标题元素
+            var titleElements = document.querySelectorAll('[data-zh-title][data-en-title]');
+            titleElements.forEach(function(el) {
+                var zhTitle = el.getAttribute('data-zh-title');
+                var enTitle = el.getAttribute('data-en-title');
+                if (zhTitle && enTitle) {
+                    // 替换元素内的文本内容
+                    if (el.textContent.trim() === enTitle.trim()) {
+                        el.textContent = zhTitle;
+                    }
+                    // 如果是链接元素，也检查其 title 属性
+                    if (el.hasAttribute('title') && el.getAttribute('title').trim() === enTitle.trim()) {
+                        el.setAttribute('title', zhTitle);
+                    }
+                }
+            });
+            // 替换首页/列表页中的文章标题（使用全局标题映射）
+            if (window._hexo_title_pairs && window._hexo_title_pairs.length > 0) {
+                // 创建英文到中文的映射
+                var titleMap = {};
+                window._hexo_title_pairs.forEach(function(pair) {
+                    titleMap[pair.en.trim()] = pair.zh;
+                });
+                // 查找所有可能包含标题的元素（标题、链接等）
+                var potentialTitleElements = document.querySelectorAll('h1, h2, h3, a.post-title, a.article-title, .post-title a, .article-title a, .post-title, .article-title, .entry-title, .entry-title a, a[rel="bookmark"], .card-title, .card-title a');
+                potentialTitleElements.forEach(function(el) {
+                    var text = el.textContent.trim();
+                    if (titleMap[text]) {
+                        el.textContent = titleMap[text];
+                    }
+                });
             }
         });
     } else {
