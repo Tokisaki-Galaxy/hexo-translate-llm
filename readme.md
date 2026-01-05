@@ -29,7 +29,7 @@ An AI-powered translation plugin for Hexo blog posts. It automatically switches 
 - **Automatic Retry**: Automatically backs off and retries on failed requests to improve success rates.
 - **SEO & Display Optimization**: Injects both Chinese and English content, automatically switching based on browser language.
 - **Hexo Tag Safety**: Automatically handles `{% %}` tags to prevent translation from breaking Hexo rendering.
-- **Title Synchronization**: Automatically switches the page `title` based on the user's language.
+- **Title Synchronization**: Automatically switches the page `title`, `<h1>` article headers, and homepage/listing page titles based on the user's language.
 
 ## 📦 Installation
 ```bash
@@ -92,7 +92,7 @@ AI 自动翻译 Hexo 博文的插件，按语言自动切换显示中/英双版�
 - **自动重试机制**：请求失败自动退避重试，提升翻译成功率。
 - **SEO/展示优化**：注入中英双份内容，并根据浏览器语言自动切换显示。
 - **Hexo 标签安全**：自动处理 `{% %}` 标签，防止翻译过程破坏 Hexo 渲染。
-- **标题同步**：自动根据用户语言切换页面 `title`。
+- **标题同步**：自动根据用户语言切换页面 `title`、文章页面的 `<h1>` 标题，以及首页/列表页的文章标题。
 
 ## 📦 安装
 ```bash
