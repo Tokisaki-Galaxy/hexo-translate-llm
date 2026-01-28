@@ -26,6 +26,12 @@
   "author": "Tokisaki Galaxy",
   "type": "commonjs",
   "main": "index.js",
+  "files": [
+    "index.js",
+    "lib/**/*",
+    "readme.md",
+    "LICENSE"
+  ],
   "directories": {
     "lib": "lib"
   },
@@ -38,5 +44,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.58.0"
   }
 }
