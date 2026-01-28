@@ -92,6 +92,7 @@ pagination_dir: page
 include:
 exclude:
 ignore:
+  - '**/*.en.md'  # Exclude manual translation files from being rendered as posts
 
 # Extensions
 ## Plugins: https://hexo.io/plugins/

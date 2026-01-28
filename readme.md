@@ -30,6 +30,7 @@ An AI-powered translation plugin for Hexo blog posts. It automatically switches 
 - **SEO & Display Optimization**: Injects both Chinese and English content, automatically switching based on browser language.
 - **Hexo Tag Safety**: Automatically handles `{% %}` tags to prevent translation from breaking Hexo rendering.
 - **Title Synchronization**: Automatically switches the page `title`, `<h1>` article headers, and homepage/listing page titles based on the user's language.
+- **Manual Translation Support**: Place a `.en.md` file alongside your post (e.g., `hello.en.md` for `hello.md`) to provide a manual translation that takes priority over LLM translation.
 
 ## 📦 Installation
 ```bash
@@ -57,6 +58,19 @@ LLM_API_KEY=your_api_key
 
 ## 📖 Usage
 - **Auto Translation**: Once enabled, posts with `layout: post` will be translated unless `no_translate: true` is set.
+- **Manual Translation**: Create a `.en.md` file with the same base name as your post to provide a manual translation. For example, for `hello.md`, create `hello.en.md`. Manual translations always take priority over LLM translations. The `.en.md` file should contain:
+  ```markdown
+  ---
+  title: Your English Title
+  ---
+
+  Your English content here...
+  ```
+  **Note**: Add `*.en.md` to your Hexo `_config.yml` `ignore` list to prevent these files from being rendered as separate posts:
+  ```yaml
+  ignore:
+    - '**/*.en.md'
+  ```
 - **Smart Refresh**: Re-calculates hash and refreshes cache when content (including title) changes.
 - **Cache Management**: Cache files are stored in `node_modules/.cache/ai-translate-cache.json` by default.
 
@@ -93,6 +107,7 @@ AI 自动翻译 Hexo 博文的插件，按语言自动切换显示中/英双版�
 - **SEO/展示优化**：注入中英双份内容，并根据浏览器语言自动切换显示。
 - **Hexo 标签安全**：自动处理 `{% %}` 标签，防止翻译过程破坏 Hexo 渲染。
 - **标题同步**：自动根据用户语言切换页面 `title`、文章页面的 `<h1>` 标题，以及首页/列表页的文章标题。
+- **人工翻译支持**：在文章旁放置同名的 `.en.md` 文件（如 `hello.md` 对应 `hello.en.md`），即可使用人工翻译，优先级高于 LLM 翻译。
 
 ## 📦 安装
 ```bash
@@ -120,6 +135,19 @@ LLM_API_KEY=你的密钥
 
 ## 📖 使用
 - **自动翻译**：启用后，对 `layout: post` 且未设置 `no_translate: true` 的文章自动翻译。
+- **人工翻译**：在文章同目录下创建同名的 `.en.md` 文件即可提供人工翻译。例如，`hello.md` 对应创建 `hello.en.md`。人工翻译的优先级始终高于 LLM 翻译。`.en.md` 文件格式如下：
+  ```markdown
+  ---
+  title: 你的英文标题
+  ---
+
+  你的英文内容...
+  ```
+  **注意**：需要在 Hexo 的 `_config.yml` 中将 `*.en.md` 添加到 `ignore` 列表，防止这些文件被渲染为独立文章：
+  ```yaml
+  ignore:
+    - '**/*.en.md'
+  ```
 - **智能刷新**：当内容（含标题）变化时，会重新计算哈希并刷新缓存。
 - **缓存管理**：缓存文件默认存储于 `node_modules/.cache/ai-translate-cache.json`。
 

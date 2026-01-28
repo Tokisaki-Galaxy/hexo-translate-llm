@@ -4,6 +4,7 @@
  * feat: 支持自定义模型和端点
  * feat: 优化SEO
  * feat: 串行排队，防止 API 并发超限
+ * feat: 支持人工翻译文件（.en.md），优先级高于 LLM 翻译
  */
 
 const crypto = require('crypto');
@@ -11,6 +12,7 @@ const Storage = require('./lib/storage');
 const { createConcurrencyLimiter } = require('./lib/concurrency');
 const { translateContent, wrapContent } = require('./lib/translator');
 const { registerInjectors } = require('./lib/injector');
+const { loadManualTranslation } = require('./lib/manual-translation');
 
 try { require('dotenv').config(); } catch (e) {}
 const config = hexo.config.llm_translation;
@@ -31,7 +33,42 @@ const globalTitlePairs = [];
 
 hexo.extend.filter.register('before_post_render', async (data) => {
     // 健壮性检查：确保 data 及其属性存在
-    if (!data || !data.content || !config || !config.enable || !API_KEY || data.layout !== 'post' || data.no_translate) {
+    if (!data || !data.content || !config || !config.enable || data.layout !== 'post' || data.no_translate) {
+        return data;
+    }
+
+    // --- 优先检查人工翻译文件（.en.md），优先级最高 ---
+    const sourceDir = hexo.source_dir;
+    const manualTranslation = loadManualTranslation(data.source, sourceDir);
+    
+    if (manualTranslation) {
+        const originalTitle = data.title;
+        const { translatedTitle, translatedContent } = manualTranslation;
+        
+        // 使用人工翻译的标题，如果没有则保持原标题
+        const finalTranslatedTitle = translatedTitle || originalTitle;
+        
+        const wrappedContent = wrapContent(
+            data.content,
+            translatedContent,
+            originalTitle,
+            finalTranslatedTitle
+        );
+        
+        data.title = finalTranslatedTitle;
+        data.content = wrappedContent;
+        
+        // 记录标题映射用于首页/列表页
+        globalTitlePairs.push({ zh: originalTitle, en: finalTranslatedTitle });
+        hexo.log.info(`[AI Translate] Using manual translation: ${data.source}`);
+        
+        return data;
+    }
+
+    // --- 以下为 LLM 翻译逻辑，仅在没有人工翻译时执行 ---
+    
+    // 如果没有 API_KEY，跳过 LLM 翻译
+    if (!API_KEY) {
         return data;
     }
 
