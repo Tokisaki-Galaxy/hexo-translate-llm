@@ -3,3 +3,11 @@ node_modules/
 .DS_Store
 *.log
 .cache/
+
+# Test Hexo environment (exclude from git tracking of generated files)
+test-hexo/node_modules/
+test-hexo/public/
+test-hexo/db.json
+test-hexo/.deploy_git/
+test-hexo/yarn.lock
+test-hexo/package-lock.json

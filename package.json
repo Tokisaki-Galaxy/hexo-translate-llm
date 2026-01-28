@@ -26,6 +26,12 @@
   "author": "Tokisaki Galaxy",
   "type": "commonjs",
   "main": "index.js",
+  "files": [
+    "index.js",
+    "lib/**/*",
+    "readme.md",
+    "LICENSE"
+  ],
   "directories": {
     "lib": "lib"
   },
